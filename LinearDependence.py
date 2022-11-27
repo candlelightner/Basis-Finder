@@ -22,6 +22,8 @@ def field_transform(matrix):
     return matrix
 
 def check_col_only_at_below(col, at):
+    if(col[at] == 0):
+        return False
     for i in range(at):
         if(preset.transform(col[i]) != 0 and at != i):
             return False
@@ -212,10 +214,8 @@ if(module_name is None):
     sys.modules[module_name] = preset
     spec.loader.exec_module(preset)
 
-to_test = [[2, 0, 0, 5],
-           [1, 2, 0, 0],
-           [0, 3, 3, 0],
-           [0, 0, 4, 4]]
+to_test = [[1, -1],
+           [-1, 1]]
 
 to_test = transpose(to_test)
 to_test = sort_matrix(to_test)
