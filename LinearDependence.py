@@ -1,45 +1,31 @@
 import math
 from functools import partial
 
+import importlib
+import importlib.util
+import sys
+from os.path import exists
 
-def addition(a, b):
-    return a + b
-  
-def multiplication(a, b):
-    return a*b
+def is_square(matrix):
+    for i in matrix:
+        if(len(matrix) != len(i)):
+            return False
+    return True
 
-def inverse_addition(a):
-    return -a
-
-def inverse_multiplication(a):
-    return 1/a
-
-def smallest_0_mult(a):
-    0
-
-def scalar_mult(v, s):
-    ret = []
-    for val in v:
-        ret.append(multiplication(val, s))
-    return ret
-
-def vector_add(v1, v2):
-    if(len(v1) != len(v2)):
-        raise ValueError("Vectors are not the same size")
-    
-    ret = []
-    for val_i in range(len(v1)):
-        ret.append(addition(v1[val_i], v2[val_i]))
-    return ret
-
-def vector_neg(v):
-    return scalar_mult(v, -1)
+def field_transform(matrix):
+    if(is_square(matrix)):
+        for col_i in range(len(matrix)):
+            col = matrix[col_i]
+            for row_i in range(len(col)):
+                col[row_i] = preset.transform(col[row_i])
+            matrix[col_i] = col
+    return matrix
 
 def check_col_only_at_below(col, at):
     for i in range(at):
-        if(col[i] != 0 and at != i):
+        if(preset.transform(col[i]) != 0 and at != i):
             return False
-        if(col[i] != 1 and at == i):
+        if(preset.transform(col[i]) != 1 and at == i):
             return False
     return True
 
@@ -47,19 +33,19 @@ def is_linear_dep(v1, v2):
     if(len(v1) != len(v2)):
         return False
     
-    v1_neg = vector_neg(v1)
+    v1_neg = preset.vector_neg(v1)
     
-    v1 = vector_add(v1, v1_neg)
-    v2 = vector_add(v2, v1_neg)
+    v1 = preset.vector_add(v1, v1_neg)
+    v2 = preset.vector_add(v2, v1_neg)
     
     for v1_e in v1:
         for v2_e in v2:
-            if(v1_e != v2_e):
-                if((v1_e == 0 or v2_e == 0)):
+            if(preset.transform(v1_e) != preset.transform(v2_e)):
+                if((preset.transform(v1_e) == 0 or transform(v2_e) == 0)):
                     return False
-                if(smallest_0_mult(v1_e) != smallest_0_mult(v2_e)):
+                if(preset.smallest_0_mult(v1_e) != preset.smallest_0_mult(v2_e)):
                     return False
-                    
+    
     return True
 
 def potential_metric(potential, col):
@@ -83,8 +69,11 @@ def find_suitable_col(matrix, col_i, row_i):
     for other_col_i in range(len(matrix)):
         if(other_col_i != col_i):
             other_col = matrix[other_col_i]
-            if(other_col[row_i] != 0 and not is_linear_dep(col, other_col) and other_col[col_i] != col[col_i]):
+            if(other_col[row_i] != 0 and not is_linear_dep(col, other_col) and preset.transform(other_col[col_i]) != preset.transform(col[col_i])):
                 potentials.append(other_col)
+    
+    if(len(potentials) == 0):
+        raise ValueError("No suitable col found, matrix might be lin. dep.")
     
     return sort_potentials(potentials, col)[0]
     
@@ -103,13 +92,13 @@ def try_make_col_canon(matrix, col_i):
             s_col = find_suitable_col(matrix, col_i, row_i)
             
             if(s_col is not None):
-                to_add = scalar_mult(s_col, inverse_multiplication(s_col[row_i]))
-                to_add = scalar_mult(to_add, col[row_i])
-                to_add = vector_neg(to_add)
-                col = vector_add(col, to_add)
+                to_add = preset.scalar_mult(s_col, preset.inverse_multiplication(s_col[row_i]))
+                to_add = preset.scalar_mult(to_add, col[row_i])
+                to_add = preset.vector_neg(to_add)
+                col = preset.vector_add(col, to_add)
             else:
                 for val in col:
-                    val = multiplication(val, inverse_multiplication(col[col_i]))
+                    val = preset.multiplication(val, preset.inverse_multiplication(col[col_i]))
                 if(check_col_only_at_below(col, col_i)):
                     return matrix
                 else:
@@ -121,7 +110,7 @@ def try_make_col_canon(matrix, col_i):
         # Scale
         for val_i in range(len(col)):
             if(col[col_i] != 0):
-                col[val_i] = multiplication(col[val_i], inverse_multiplication(col[col_i]))
+                col[val_i] = preset.multiplication(col[val_i], preset.inverse_multiplication(col[col_i]))
         
     matrix[col_i] = col
     
@@ -130,30 +119,49 @@ def try_make_col_canon(matrix, col_i):
     
 
 def try_make_canon_basis(matrix):
-    for i in matrix:
-        if(len(matrix) != len(i)):
-            raise ValueError("Matrix is not nxn")
-    for col_i_top in range(len(matrix)):    
-        #while(not check_col_only_at_below(matrix[col_i_top], col_i_top)):
+    if(not is_square(matrix)):
+        raise ValueError("Matrix is not nxn")
+    for i in range(len(matrix)):
+        for col_i_top in range(len(matrix)):    
+            for col_i in range(len(matrix)):
+                matrix = try_make_col_canon(matrix, col_i)        
+        # Scale Again
         for col_i in range(len(matrix)):
-            matrix = try_make_col_canon(matrix, col_i)        
-    # Scale Again
-    for col_i in range(len(matrix)):
-        col = matrix[col_i]
-        for val_i in range(len(col)):
-                if(col[col_i] != 0):
-                    col[val_i] = multiplication(col[val_i], inverse_multiplication(col[col_i]))
-                    
+            col = matrix[col_i]
+            for val_i in range(len(col)):
+                    if(col[col_i] != 0):
+                        col[val_i] = preset.multiplication(col[val_i], preset.inverse_multiplication(col[col_i]))
+        if(check_col_only_at_below(matrix[col_i_top], col_i_top)):
+            break
+        
     if(not check_col_only_at_below(matrix[col_i_top], col_i_top)):
         raise ValueError("Matrix is lin. dep :(")
         
+    matrix = field_transform(matrix)
+        
     return matrix    
 
+def add_not_0_at_i(matrix, col_i):
+    col = matrix[col_i]
+    
+    if(col[col_i] != 0):
+        return matrix
+    
+    for other_col in matrix:
+        if(other_col[col_i] != 0):
+            matrix[col_i] = preset.vector_add(other_col, col)
+            return matrix
+
+def make_matrix_not_0(matrix):
+    for col_i in range(len(matrix)):
+        matrix = add_not_0_at_i(matrix, col_i)
+    return matrix
 
 def transpose(matrix):
-    ret = [ [0]*3 for i in range(3)]
+    len_matrix = len(matrix)
+    ret = [ [0]*len_matrix for i in range(len_matrix)]
     
-    for row_i in range(len(matrix)):
+    for row_i in range(len_matrix):
         for col_i in range(len(matrix[row_i])):
             ret[col_i][row_i] = matrix[row_i][col_i]
             
@@ -184,13 +192,34 @@ def print_matrix_flt(matrix):
     for i in matrix:
         print('\t'.join(map(format, i)))
 
-to_test = [[5, 1, 6],
-           [2, 1, 2],
-           [5, 1, 6]]
+module_name = input("Enter a name of your preset file (in /Presets), leave empty for default: ")
+
+if module_name in sys.modules:
+    pass
+elif (importlib.util.spec_from_file_location(f"{module_name}", f"./Presets/{module_name}.py")) is not None and exists(f"./Presets/{module_name}.py"):
+    spec = importlib.util.spec_from_file_location(f"{module_name}", f"./Presets/{module_name}.py")
+    preset = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = preset
+    spec.loader.exec_module(preset)
+    print(f"{module_name!r} has been imported")
+else:
+    print(f"Can't find the {module_name} module, using default")
+    module_name = None
+
+if(module_name is None):
+    spec = importlib.util.spec_from_file_location("Default", "./Presets/Default.py")
+    preset = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = preset
+    spec.loader.exec_module(preset)
+
+to_test = [[2, 0, 0, 5],
+           [1, 2, 0, 0],
+           [0, 3, 3, 0],
+           [0, 0, 4, 4]]
 
 to_test = transpose(to_test)
 to_test = sort_matrix(to_test)
-
+to_test = make_matrix_not_0(to_test)
 
 print("Starting algo for:")
 print_matrix_flt(to_test)
@@ -200,10 +229,12 @@ print_matrix_str([["=", "=", "="]])
 try:
     result = try_make_canon_basis(to_test)
 
-    print("Success!!! Matrix can be transformed into canonical for using elementery operations:")
+    result = transpose(result)
+
+    print("Success!!! Matrix can be transformed into canonical form using elementary operations:")
     print_matrix_str([["=", "=", "="]])
     print_matrix_flt(result)
 except Exception as err:
-    print("Oh no! Either your matrix is not linearily independent, or you have an error in your defenition of operations")
+    print("Oh no! Either your matrix is not linearily independent, or you have an error in the definition of your operations")
     print("The error is:")
     print(err)
