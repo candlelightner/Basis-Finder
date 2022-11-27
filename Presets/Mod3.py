@@ -8,7 +8,7 @@ def inverse_addition(a):
     return -a
 
 def inverse_multiplication(a):
-    return 3 * a
+    return a
 
 #use math.lcm if you want to find out the least common multiple of any amount of numbers
 def smallest_0_mult(a):
