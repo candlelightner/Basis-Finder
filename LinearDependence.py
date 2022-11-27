@@ -224,7 +224,7 @@ to_test = make_matrix_not_0(to_test)
 print("Starting algo for:")
 print_matrix_flt(to_test)
 
-print_matrix_str([["=", "=", "="]])
+print_matrix_str([["="]*len(to_test)])
 
 try:
     result = try_make_canon_basis(to_test)
