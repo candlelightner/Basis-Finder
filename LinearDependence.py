@@ -110,9 +110,12 @@ def try_make_col_canon(matrix, col_i):
                 
         
         # Scale
-        for val_i in range(len(col)):
-            if(col[col_i] != 0):
-                col[val_i] = preset.multiplication(col[val_i], preset.inverse_multiplication(col[col_i]))
+        inverse = preset.inverse_multiplication(col[col_i])
+        
+        if(inverse != 0):
+            for val_i in range(len(col)):
+                dbg = preset.inverse_multiplication(col[col_i])
+                col[val_i] = preset.multiplication(col[val_i], inverse)
         
     matrix[col_i] = col
     
@@ -123,21 +126,28 @@ def try_make_col_canon(matrix, col_i):
 def try_make_canon_basis(matrix):
     if(not is_square(matrix)):
         raise ValueError("Matrix is not nxn")
-    for i in range(len(matrix)):
-        for col_i_top in range(len(matrix)):    
-            for col_i in range(len(matrix)):
-                matrix = try_make_col_canon(matrix, col_i)        
-        # Scale Again
-        for col_i in range(len(matrix)):
-            col = matrix[col_i]
-            for val_i in range(len(col)):
-                    if(col[col_i] != 0):
-                        col[val_i] = preset.multiplication(col[val_i], preset.inverse_multiplication(col[col_i]))
-        if(check_col_only_at_below(matrix[col_i_top], col_i_top)):
-            break
+      
+    for col_i in range(len(matrix)):
+        matrix = try_make_col_canon(matrix, col_i)
         
-    if(not check_col_only_at_below(matrix[col_i_top], col_i_top)):
-        raise ValueError("Matrix is lin. dep :(")
+        matrix = field_transform(matrix)
+        
+        tmp = sort_matrix(matrix)
+        
+        if(tmp != matrix):
+            matrix = tmp
+            col_i = 0
+        
+    # Scale Again
+    for col_i in range(len(matrix)):
+        col = matrix[col_i]
+        for val_i in range(len(col)):
+                if(col[col_i] != 0):
+                    col[val_i] = preset.multiplication(col[val_i], preset.inverse_multiplication(col[col_i]))
+    
+    for col_i in range(len(matrix)):
+        if(not check_col_only_at_below(matrix[col_i], col_i)):
+            raise ValueError("Matrix is lin. dep :(")
         
     matrix = field_transform(matrix)
         
@@ -222,7 +232,7 @@ to_test = sort_matrix(to_test)
 to_test = make_matrix_not_0(to_test)
 
 print("Starting algo for:")
-print_matrix_flt(to_test)
+print_matrix_flt(transpose(to_test))
 
 print_matrix_str([["="]*len(to_test)])
 
